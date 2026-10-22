@@ -1,0 +1,18 @@
+{
+  "name": "GodField",
+  "version": "2.0.0",
+  "modules": {
+    "lib/Util.lua": "sha256:…",
+    "lib/Signals.lua": "sha256:…",
+    "lib/Store.lua": "sha256:…",
+    "lib/Theme.lua": "sha256:…",
+    "lib/Create.lua": "sha256:…",
+    "lib/Icons.lua": "sha256:…",
+    "lib/Config.lua": "sha256:…",
+    "lib/Reporter.lua": "sha256:…",
+    "ui/Window.lua": "sha256:…",
+    "ui/Tab.lua": "sha256:…",
+    "ui/Section.lua": "sha256:…",
+    "elements/init.lua": "sha256:…"
+  }
+}
