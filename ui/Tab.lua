@@ -1,14 +1,8 @@
 -- GodField/ui/Tab.lua
--- Tab class. Full element surface inline. Search, description helper,
--- register helper, button-state sync, theme application, and teardown are
--- all present. No element body delegates to elements/*.lua; those files
--- exist for hosts that want to override one element's visuals, and
--- elements/init.lua is unused by this file.
+-- Full element surface inline. No external element files are fetched.
 
 local Tab = {}
 Tab.__index = Tab
-
--- ── Construction ───────────────────────────────────────────────────────
 
 function Tab.new(window, name, icon, ext)
     local self = setmetatable({
@@ -23,7 +17,6 @@ function Tab.new(window, name, icon, ext)
         _searchQuery  = "",
     }, Tab)
 
-    -- Tabstrip button
     local btn = Instance.new("TextButton")
     btn.Name = name
     btn.Size = UDim2.new(1, -10, 0, 30)
@@ -43,7 +36,6 @@ function Tab.new(window, name, icon, ext)
     btnCorner.CornerRadius = UDim.new(0, 6)
     btnCorner.Parent = btn
 
-    -- Scrolling page
     local page = Instance.new("ScrollingFrame")
     page.Name = name
     page.Size = UDim2.fromScale(1, 1)
@@ -89,8 +81,6 @@ function Tab.new(window, name, icon, ext)
     return self
 end
 
--- ── Tab button visual state ────────────────────────────────────────────
-
 function Tab:_syncButtonState()
     local tokens = self.window.theme.tokens
     local active = self.window.pager.CurrentPage == self.page
@@ -124,22 +114,6 @@ function Tab:_applyTheme()
     end
 end
 
--- ── Dependency bundle ─────────────────────────────────────────────────
-
-function Tab:_deps()
-    local w = self.window
-    return {
-        Util    = w._deps.Util,
-        Theme   = w._deps.Theme,
-        Icons   = w._deps.Icons,
-        Signals = w._deps.Signals,
-    }
-end
-
--- ── Shared description helper ─────────────────────────────────────────
---
--- One TextLabel per frame, created lazily, frame height padded once.
-
 function Tab:_setDescription(frame, text)
     local d = self._descriptions[frame]
     if not d then
@@ -165,8 +139,6 @@ function Tab:_setDescription(frame, text)
     d.Visible = hasText
 end
 
--- ── Element registration ──────────────────────────────────────────────
-
 function Tab:_register(handle)
     table.insert(self.elements, handle)
     handle.frame.Parent = self.page
@@ -175,8 +147,6 @@ function Tab:_register(handle)
     end
     return handle
 end
-
--- ── Search ────────────────────────────────────────────────────────────
 
 function Tab:_matches(query, frame)
     if query == "" then return true end
@@ -242,49 +212,6 @@ function Tab:CreateSearch()
     return box
 end
 
--- ── Element factory helper ────────────────────────────────────────────
---
--- Every element follows the same shape: build a frame, add label, add
--- value widgets, wire callbacks, return handle. This helper factors the
--- common "base frame" construction so no element repeats it.
-
-function Tab:_baseFrame(name, height)
-    local t = self.window.theme.tokens
-    local frame = Instance.new("Frame")
-    frame.Name = name
-    frame.Size = UDim2.new(1, 0, 0, height or 34)
-    frame.BackgroundColor3 = t.element
-    frame.BorderSizePixel = 0
-    frame.Parent = self.page
-
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 6)
-    c.Parent = frame
-
-    local s = Instance.new("UIStroke")
-    s.Color = t.elementStroke
-    s.Parent = frame
-
-    return frame, c, s
-end
-
-function Tab:_baseLabel(frame, text, width)
-    local t = self.window.theme.tokens
-    local label = Instance.new("TextLabel")
-    label.Size = width and UDim2.new(1, width, 1, 0) or UDim2.new(1, -20, 1, 0)
-    label.Position = UDim2.fromOffset(10, 0)
-    label.BackgroundTransparency = 1
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 13
-    label.TextColor3 = t.text
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Text = text or ""
-    label.Parent = frame
-    return label
-end
-
--- ── Button ────────────────────────────────────────────────────────────
-
 function Tab:CreateButton(opts)
     opts = opts or {}
     local frame = Instance.new("TextButton")
@@ -303,9 +230,8 @@ function Tab:CreateButton(opts)
     local s = Instance.new("UIStroke"); s.Color = self.window.theme.tokens.elementStroke; s.Parent = frame
 
     local handle = { frame = frame, _enabled = true }
-    local clickConn
-    local enterConn
-    local leaveConn
+    local clickConn, enterConn, leaveConn
+    local self_tab = self
 
     local function run()
         if handle._enabled == false then return end
@@ -326,10 +252,7 @@ function Tab:CreateButton(opts)
     end)
     clickConn = frame.MouseButton1Click:Connect(run)
 
-    function handle:Set(label)
-        frame.Text = label
-        frame.Name = label
-    end
+    function handle:Set(label) frame.Text = label; frame.Name = label end
     function handle:get() return frame.Text end
     function handle:SetEnabled(v)
         self._enabled = v and true or false
@@ -338,15 +261,10 @@ function Tab:CreateButton(opts)
     end
     function handle:SetVisible(v) frame.Visible = v and true or false end
     function handle:SetDescription(text) self_tab:_setDescription(frame, text) end
-
     function handle:Destroy()
-        clickConn:Disconnect()
-        enterConn:Disconnect()
-        leaveConn:Disconnect()
-        frame:Destroy()
+        clickConn:Disconnect(); enterConn:Disconnect(); leaveConn:Disconnect(); frame:Destroy()
     end
 
-    local self_tab = self
     self.window.bus:connect("theme:changed", function(theme)
         local tk = theme.tokens
         frame.BackgroundColor3 = tk.element
@@ -354,19 +272,13 @@ function Tab:CreateButton(opts)
         s.Color = tk.elementStroke
     end)
 
-    if opts.Flag then
-        self.window.store:registerFlag(opts.Flag, handle)
-    end
-
+    if opts.Flag then self.window.store:registerFlag(opts.Flag, handle) end
     return self:_register(handle)
 end
-
--- ── Toggle ────────────────────────────────────────────────────────────
 
 function Tab:CreateToggle(opts)
     opts = opts or {}
     local t = self.window.theme.tokens
-
     local frame = Instance.new("TextButton")
     frame.Name = opts.Name or "Toggle"
     frame.Size = UDim2.new(1, 0, 0, 34)
@@ -413,6 +325,7 @@ function Tab:CreateToggle(opts)
     end
 
     local handle = { frame = frame, _enabled = true }
+    local tab_for_desc = self
 
     local function render()
         local tk = self.window.theme.tokens
@@ -444,7 +357,6 @@ function Tab:CreateToggle(opts)
     function handle:SetVisible(v) frame.Visible = v and true or false end
     function handle:SetDescription(text) tab_for_desc:_setDescription(frame, text) end
 
-    local tab_for_desc = self
     local clickConn = frame.MouseButton1Click:Connect(function()
         if handle._enabled == false then return end
         value = not value
@@ -463,12 +375,8 @@ function Tab:CreateToggle(opts)
     end)
 
     function handle:Destroy()
-        clickConn:Disconnect()
-        enterConn:Disconnect()
-        leaveConn:Disconnect()
-        frame:Destroy()
+        clickConn:Disconnect(); enterConn:Disconnect(); leaveConn:Disconnect(); frame:Destroy()
     end
-
     render()
 
     self.window.bus:connect("theme:changed", function(theme)
@@ -479,19 +387,13 @@ function Tab:CreateToggle(opts)
         render()
     end)
 
-    if opts.Flag then
-        self.window.store:registerFlag(opts.Flag, handle)
-    end
-
+    if opts.Flag then self.window.store:registerFlag(opts.Flag, handle) end
     return self:_register(handle)
 end
-
--- ── Slider ────────────────────────────────────────────────────────────
 
 function Tab:CreateSlider(opts)
     opts = opts or {}
     local t = self.window.theme.tokens
-
     local range = opts.Range or { 0, 100 }
     local inc = opts.Increment or 1
     local value = math.clamp(opts.CurrentValue or range[1], range[1], range[2])
@@ -544,10 +446,9 @@ function Tab:CreateSlider(opts)
     local fc = Instance.new("UICorner"); fc.CornerRadius = UDim.new(1, 0); fc.Parent = fill
 
     local handle = { frame = frame, _enabled = true }
+    local slider_tab = self
 
-    local function round(v)
-        return range[1] + math.floor(((v - range[1]) / inc) + 0.5) * inc
-    end
+    local function round(v) return range[1] + math.floor(((v - range[1]) / inc) + 0.5) * inc end
 
     local function render()
         local pct = (value - range[1]) / (range[2] - range[1])
@@ -576,8 +477,7 @@ function Tab:CreateSlider(opts)
     local UIS = game:GetService("UserInputService")
     local dragging = false
     local trackBegan = track.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             if handle._enabled == false then return end
             dragging = true
             setFromX(input.Position.X)
@@ -585,14 +485,12 @@ function Tab:CreateSlider(opts)
     end)
     local inputMoved = UIS.InputChanged:Connect(function(input)
         if not dragging then return end
-        if input.UserInputType == Enum.UserInputType.MouseMovement
-            or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             setFromX(input.Position.X)
         end
     end)
     local inputEnded = UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
@@ -613,14 +511,8 @@ function Tab:CreateSlider(opts)
     end
     function handle:SetVisible(v) frame.Visible = v and true or false end
     function handle:SetDescription(text) slider_tab:_setDescription(frame, text) end
-
-    local slider_tab = self
-
     function handle:Destroy()
-        trackBegan:Disconnect()
-        inputMoved:Disconnect()
-        inputEnded:Disconnect()
-        frame:Destroy()
+        trackBegan:Disconnect(); inputMoved:Disconnect(); inputEnded:Disconnect(); frame:Destroy()
     end
 
     if opts.Flag then
@@ -640,14 +532,9 @@ function Tab:CreateSlider(opts)
         fill.BackgroundColor3 = tk.sliderProgress
     end)
 
-    if opts.Flag then
-        self.window.store:registerFlag(opts.Flag, handle)
-    end
-
+    if opts.Flag then self.window.store:registerFlag(opts.Flag, handle) end
     return self:_register(handle)
 end
-
--- ── Input ─────────────────────────────────────────────────────────────
 
 function Tab:CreateInput(opts)
     opts = opts or {}
@@ -696,6 +583,7 @@ function Tab:CreateInput(opts)
     end
 
     local handle = { frame = frame, _enabled = true }
+    local input_tab = self
 
     local function fire()
         if opts.Callback then
@@ -720,12 +608,8 @@ function Tab:CreateInput(opts)
     end
     function handle:SetVisible(v) frame.Visible = v and true or false end
     function handle:SetDescription(text) input_tab:_setDescription(frame, text) end
-
-    local input_tab = self
-
     function handle:Destroy()
-        lost:Disconnect()
-        frame:Destroy()
+        lost:Disconnect(); frame:Destroy()
     end
 
     self.window.bus:connect("theme:changed", function(theme)
@@ -739,19 +623,13 @@ function Tab:CreateInput(opts)
         bs.Color = tk.inputStroke
     end)
 
-    if opts.Flag then
-        self.window.store:registerFlag(opts.Flag, handle)
-    end
-
+    if opts.Flag then self.window.store:registerFlag(opts.Flag, handle) end
     return self:_register(handle)
 end
-
--- ── Keybind ───────────────────────────────────────────────────────────
 
 function Tab:CreateKeybind(opts)
     opts = opts or {}
     local t = self.window.theme.tokens
-
     local frame = Instance.new("Frame")
     frame.Name = opts.Name or "Keybind"
     frame.Size = UDim2.new(1, 0, 0, 34)
@@ -796,6 +674,7 @@ function Tab:CreateKeybind(opts)
 
     local handle = { frame = frame, _enabled = true, _held = false }
     local UIS = game:GetService("UserInputService")
+    local keybind_tab = self
 
     local function fire(value)
         if handle._enabled == false then return end
@@ -852,15 +731,10 @@ function Tab:CreateKeybind(opts)
     end
     function handle:SetVisible(v) frame.Visible = v and true or false end
     function handle:SetDescription(text) keybind_tab:_setDescription(frame, text) end
-
-    local keybind_tab = self
-
     function handle:Destroy()
         if focused then focused:Disconnect() end
         if captureConn then captureConn:Disconnect() end
-        down:Disconnect()
-        up:Disconnect()
-        frame:Destroy()
+        down:Disconnect(); up:Disconnect(); frame:Destroy()
     end
 
     self.window.bus:connect("theme:changed", function(theme)
@@ -873,19 +747,13 @@ function Tab:CreateKeybind(opts)
         bs.Color = tk.inputStroke
     end)
 
-    if opts.Flag then
-        self.window.store:registerFlag(opts.Flag, handle)
-    end
-
+    if opts.Flag then self.window.store:registerFlag(opts.Flag, handle) end
     return self:_register(handle)
 end
-
--- ── Dropdown ──────────────────────────────────────────────────────────
 
 function Tab:CreateDropdown(opts)
     opts = opts or {}
     local t = self.window.theme.tokens
-
     local options = opts.Options or {}
     local multiple = opts.MultipleOptions and true or false
 
@@ -971,6 +839,7 @@ function Tab:CreateDropdown(opts)
     local handle = { frame = frame, _enabled = true }
     local buttons = {}
     local open = false
+    local dropdown_tab = self
 
     local function refreshReadout()
         if not multiple then
@@ -1066,6 +935,16 @@ function Tab:CreateDropdown(opts)
         refreshReadout()
         fire()
     end
+    function handle:Refresh(newOptions)
+        options = newOptions or {}
+        if not multiple then
+            if not table.find(options, current[1]) then
+                current = { options[1] }
+            end
+        end
+        refreshReadout()
+        if open then rebuild() end
+    end
     function handle:get() return current end
     function handle:SetEnabled(v)
         self._enabled = v and true or false
@@ -1074,9 +953,6 @@ function Tab:CreateDropdown(opts)
     end
     function handle:SetVisible(v) frame.Visible = v and true or false end
     function handle:SetDescription(text) dropdown_tab:_setDescription(frame, text) end
-
-    local dropdown_tab = self
-
     function handle:Destroy()
         for _, b in ipairs(buttons) do b:Destroy() end
         frame:Destroy()
@@ -1097,19 +973,13 @@ function Tab:CreateDropdown(opts)
         if open then rebuild() end
     end)
 
-    if opts.Flag then
-        self.window.store:registerFlag(opts.Flag, handle)
-    end
-
+    if opts.Flag then self.window.store:registerFlag(opts.Flag, handle) end
     return self:_register(handle)
 end
-
--- ── ColorPicker ───────────────────────────────────────────────────────
 
 function Tab:CreateColorPicker(opts)
     opts = opts or {}
     local t = self.window.theme.tokens
-
     local color = opts.Color or Color3.fromRGB(255, 255, 255)
     if opts.Flag then
         local saved = self.window.store:get("GodField", opts.Flag)
@@ -1164,7 +1034,6 @@ function Tab:CreateColorPicker(opts)
     local pc = Instance.new("UICorner"); pc.CornerRadius = UDim.new(0, 6); pc.Parent = panel
     local ps = Instance.new("UIStroke"); ps.Color = t.secondaryStroke; ps.Parent = panel
 
-    -- SV pad
     local pad = Instance.new("Frame")
     pad.Size = UDim2.new(1, -20, 0, 60)
     pad.Position = UDim2.fromOffset(10, 10)
@@ -1203,7 +1072,6 @@ function Tab:CreateColorPicker(opts)
     dot.Parent = pad
     local dc = Instance.new("UICorner"); dc.CornerRadius = UDim.new(1, 0); dc.Parent = dot
 
-    -- Hue strip
     local hue = Instance.new("Frame")
     hue.Size = UDim2.new(1, -20, 0, 12)
     hue.Position = UDim2.new(0, 10, 0, 78)
@@ -1250,6 +1118,7 @@ function Tab:CreateColorPicker(opts)
 
     local handle = { frame = frame, _enabled = true }
     local open = false
+    local colorpicker_tab = self
 
     local function render()
         local h, sat, v = color:ToHSV()
@@ -1298,32 +1167,27 @@ function Tab:CreateColorPicker(opts)
 
     pad.InputBegan:Connect(function(input)
         if handle._enabled == false then return end
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             draggingPad = true
             setPad(input.Position.X, input.Position.Y)
         end
     end)
     hue.InputBegan:Connect(function(input)
         if handle._enabled == false then return end
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             draggingHue = true
             setHue(input.Position.X)
         end
     end)
     local inputMoved = UIS.InputChanged:Connect(function(input)
-        if draggingPad and (input.UserInputType == Enum.UserInputType.MouseMovement
-            or input.UserInputType == Enum.UserInputType.Touch) then
+        if draggingPad and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             setPad(input.Position.X, input.Position.Y)
-        elseif draggingHue and (input.UserInputType == Enum.UserInputType.MouseMovement
-            or input.UserInputType == Enum.UserInputType.Touch) then
+        elseif draggingHue and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             setHue(input.Position.X)
         end
     end)
     local inputEnded = UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             draggingPad, draggingHue = false, false
         end
     end)
@@ -1359,14 +1223,8 @@ function Tab:CreateColorPicker(opts)
     end
     function handle:SetVisible(v) frame.Visible = v and true or false end
     function handle:SetDescription(text) colorpicker_tab:_setDescription(frame, text) end
-
-    local colorpicker_tab = self
-
     function handle:Destroy()
-        inputMoved:Disconnect()
-        inputEnded:Disconnect()
-        if hexLost then hexLost:Disconnect() end
-        frame:Destroy()
+        inputMoved:Disconnect(); inputEnded:Disconnect(); if hexLost then hexLost:Disconnect() end; frame:Destroy()
     end
 
     render()
@@ -1383,18 +1241,12 @@ function Tab:CreateColorPicker(opts)
         hxs.Color = tk.inputStroke
     end)
 
-    if opts.Flag then
-        self.window.store:registerFlag(opts.Flag, handle)
-    end
-
+    if opts.Flag then self.window.store:registerFlag(opts.Flag, handle) end
     return self:_register(handle)
 end
 
--- ── Label ─────────────────────────────────────────────────────────────
-
 function Tab:CreateLabel(text)
     local t = self.window.theme.tokens
-
     local frame = Instance.new("Frame")
     frame.Name = "Label"
     frame.Size = UDim2.new(1, 0, 0, 22)
@@ -1412,14 +1264,13 @@ function Tab:CreateLabel(text)
     label.Parent = frame
 
     local handle = { frame = frame }
+    local label_tab = self
     function handle:Set(v) label.Text = tostring(v or "") end
     function handle:get() return label.Text end
     function handle:SetEnabled(v) label.TextTransparency = v and 0 or 0.5 end
     function handle:SetVisible(v) frame.Visible = v and true or false end
     function handle:SetDescription(txt) label_tab:_setDescription(frame, txt) end
     function handle:Destroy() frame:Destroy() end
-
-    local label_tab = self
 
     self.window.bus:connect("theme:changed", function(theme)
         label.TextColor3 = theme.tokens.placeholder
@@ -1428,12 +1279,9 @@ function Tab:CreateLabel(text)
     return self:_register(handle)
 end
 
--- ── Paragraph ─────────────────────────────────────────────────────────
-
 function Tab:CreateParagraph(opts)
     opts = opts or {}
     local t = self.window.theme.tokens
-
     local frame = Instance.new("Frame")
     frame.Name = "Paragraph"
     frame.Size = UDim2.new(1, 0, 0, 46)
@@ -1468,6 +1316,7 @@ function Tab:CreateParagraph(opts)
     content.Parent = frame
 
     local handle = { frame = frame }
+    local paragraph_tab = self
     function handle:Set(v) content.Text = tostring(v or "") end
     function handle:get() return content.Text end
     function handle:SetEnabled(v)
@@ -1477,8 +1326,6 @@ function Tab:CreateParagraph(opts)
     function handle:SetVisible(v) frame.Visible = v and true or false end
     function handle:SetDescription(txt) paragraph_tab:_setDescription(frame, txt) end
     function handle:Destroy() frame:Destroy() end
-
-    local paragraph_tab = self
 
     self.window.bus:connect("theme:changed", function(theme)
         local tk = theme.tokens
@@ -1491,11 +1338,8 @@ function Tab:CreateParagraph(opts)
     return self:_register(handle)
 end
 
--- ── Section ───────────────────────────────────────────────────────────
-
 function Tab:CreateSection(name)
     local t = self.window.theme.tokens
-
     local frame = Instance.new("Frame")
     frame.Name = "Section"
     frame.Size = UDim2.new(1, 0, 0, 20)
@@ -1529,11 +1373,8 @@ function Tab:CreateSection(name)
     return handle
 end
 
--- ── Divider ───────────────────────────────────────────────────────────
-
 function Tab:CreateDivider()
     local t = self.window.theme.tokens
-
     local frame = Instance.new("Frame")
     frame.Name = "Divider"
     frame.Size = UDim2.new(1, 0, 0, 1)
@@ -1556,8 +1397,6 @@ function Tab:CreateDivider()
     return self:_register(handle)
 end
 
--- ── Visibility ────────────────────────────────────────────────────────
-
 function Tab:SetVisible(v)
     v = v and true or false
     self.btn.Visible = v and not self.ext
@@ -1567,8 +1406,6 @@ end
 function Tab:IsVisible()
     return self.page.Visible
 end
-
--- ── Teardown ──────────────────────────────────────────────────────────
 
 function Tab:Destroy()
     for _, handle in ipairs(self.elements) do
