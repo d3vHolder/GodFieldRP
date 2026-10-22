@@ -47,33 +47,37 @@ local modules = {
     Icons   = fetch("lib/Icons.lua"),
 }
 
--- 2. Load Elements and bind the base URL so it can fetch lazily
-modules.Elements = fetch("elements/init.lua")(modules)
+-- 2. Load Elements (returns a table with .create and .bind)
+modules.Elements = fetch("elements/init.lua")
 pcall(function() modules.Elements.bind(BASE) end)
 
--- 3. Load UI and Create (which depends on the modules table)
+-- 3. Load Create. It expects the `modules` table to exist so it can pull
+-- Util, Theme, Signals, Store out of it.
 modules.Create = fetch("lib/Create.lua")(modules)
-modules.Window = fetch("ui/Window.lua")({ 
-    Create = modules.Create, 
-    Signals = modules.Signals, 
-    Store = modules.Store, 
-    Theme = modules.Theme, 
-    Util = modules.Util, 
-    Icons = modules.Icons,
+
+-- 4. Load Tab. Tab needs Elements, Theme, Util, etc. 
+-- (We pass these explicitly so Tab knows where to find them).
+modules.Tab = fetch("ui/Tab.lua")({
+    Signals  = modules.Signals,
+    Theme    = modules.Theme,
+    Util     = modules.Util,
+    Icons    = modules.Icons,
     Elements = modules.Elements,
 })
 
--- 4. Load Tab (needs Window and Elements)
-modules.Tab = fetch("ui/Tab.lua")({ 
-    Window = modules.Window, 
-    Signals = modules.Signals, 
-    Theme = modules.Theme, 
-    Util = modules.Util, 
-    Icons = modules.Icons, 
+-- 5. Load Window. It wraps Create and Tab.
+modules.Window = fetch("ui/Window.lua")({
+    Create   = modules.Create,
+    Tab      = modules.Tab,
+    Signals  = modules.Signals,
+    Store    = modules.Store,
+    Theme    = modules.Theme,
+    Util     = modules.Util,
+    Icons    = modules.Icons,
     Elements = modules.Elements,
 })
 
--- 5. Remaining modules
+-- 6. Remaining modules
 modules.Section  = fetch("ui/Section.lua")({})
 modules.Config   = fetch("lib/Config.lua")({ Util = modules.Util, Store = modules.Store })
 modules.Reporter = fetch("lib/Reporter.lua")({ Util = modules.Util })
