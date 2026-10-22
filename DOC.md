@@ -42,7 +42,7 @@ What changed versus the common "asset-drop" UI pattern:
 
 ```lua
 local GodField = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/<user>/<repo>/<branch>/GodField/init.lua"
+    "https://raw.githubusercontent.com/d3vHolder/GodFieldRP/main/build/godfield.lua"
 ))()
 ```
 
@@ -53,7 +53,7 @@ If your executor strips `debug.info`, set the base explicitly before
 loading:
 
 ```lua
-getgenv().GODFIELD_BASE = "https://raw.githubusercontent.com/<user>/<repo>/<branch>/GodField/"
+getgenv().GODFIELD_BASE = "https://raw.githubusercontent.com/d3vHolder/GodFieldRP/main/"
 local GodField = loadstring(game:HttpGet(getgenv().GODFIELD_BASE .. "init.lua"))()
 ```
 
@@ -73,7 +73,7 @@ Ship only `build/godfield.lua`:
 
 ```lua
 local GodField = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/<user>/<repo>/<branch>/GodField/build/godfield.lua"
+    "https://raw.githubusercontent.com/d3vHolder/GodFieldRP/main/build/godfield.lua"
 ))()
 ```
 
@@ -87,7 +87,7 @@ Trade-offs: every module is in memory from the start (≈40 KB larger than
 
 ```lua
 local GodField = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/<user>/<repo>/<branch>/GodField/init.lua"
+    "https://raw.githubusercontent.com/d3vHolder/GodFieldRP/main/build/godfield.lua"
 ))()
 
 local Window = GodField:CreateWindow({
