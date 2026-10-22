@@ -11,4 +11,4 @@ build-mismatch warnings, no baked-in analytics endpoint.
 
 Remote (recommended):
 
-local GodField = loadstring(game:HttpGet("https://raw.githubusercontent.com/your-org/GodField/main/init.lua"))()
+local GodField = loadstring(game:HttpGet("https://raw.githubusercontent.com/your-org/GodField/main/build/godfield.lua"))()
