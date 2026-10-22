@@ -1,6 +1,4 @@
 -- GodField/elements/init.lua
--- Registry. Lazy-loads each element module on first use.
-
 local Elements = {}
 
 local MODULES = {
@@ -20,7 +18,6 @@ local MODULES = {
 local _cache = {}
 local _base = "https://raw.githubusercontent.com/d3vHolder/GodFieldRP/main/"
 
--- Caller passes the resolved base URL from init.lua
 function Elements.bind(base)
     if type(base) == "string" and base ~= "" then
         _base = base
