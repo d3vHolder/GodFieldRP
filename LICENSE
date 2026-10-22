@@ -1,0 +1,48 @@
+
+## `DOC.md`
+
+````markdown
+# GodField
+
+A code-built, modular Roblox UI library. No CDN ScreenGui asset, no
+`game:GetObjects`, no build-mismatch warnings, no baked-in analytics
+endpoint. The entire interface is constructed from `Instance.new` in
+`lib/Create.lua`; every element is a Lua table that owns one frame.
+
+**Version:** 2.0.0
+**Compatibility:** Roblox executors that expose `loadstring`, `getgenv`,
+and (optionally) `request` / `http_request`. Studio works if
+`GODFIELD_BASE` points at the local folder.
+
+---
+
+## 1. What GodField is
+
+GodField is an independent UI library. It is not a fork or a rebrand of
+any other project — every module is written from scratch against the
+public Roblox `Instance` API. The public API shape (`CreateWindow`,
+`CreateTab`, `CreateButton`, …) is deliberately kept familiar so a
+script that used a similar library can migrate in minutes; see §6 for
+the migration table.
+
+| Old pattern | GodField |
+|---|---|
+| `game:GetObjects("rbxassetid://…")` loads a ScreenGui from the CDN | `Instance.new` tree built in `lib/Create.lua` |
+| Every UI tweak needs a new asset upload | Edit a Lua file, reload |
+| Build-mismatch warning when asset and code disagree | No version negotiation, no warning |
+| 2 400-line monolith in one `source.lua` | 22 modules, one responsibility each |
+| Elements copy-paste 80-line Tween blocks | Element factory + shared `Util.tween` |
+| Per-element `RenderStepped` loops leak on teardown | Single signal bus with `:sweep()` |
+| `settings.rfld` with no schema version | `settings.json` with `__version` |
+| Baked-in analytics collector and token | Zero default endpoint; opt-in only |
+
+---
+
+## 2. Installation
+
+### Mode A — remote (recommended)
+
+```lua
+local GodField = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/d3vHolder/GodFieldRP/main/init.lua"
+))()
